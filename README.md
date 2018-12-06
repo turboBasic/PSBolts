@@ -1,3 +1,5 @@
+[![Build status](https://ci.appveyor.com/api/projects/status/1dli2nc0p8opclcm?svg=true)](https://ci.appveyor.com/project/mao/psbolts)
+
 PSBolts
 =======
 
