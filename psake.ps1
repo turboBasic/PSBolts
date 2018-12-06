@@ -56,15 +56,11 @@ Task Test -Depends UnitTests {
     #& "$ProjectRoot/Tests/Invoke-RSPester.ps1" -Path $ProjectRoot\Tests
     
 
-    # In Appveyor?  Upload our tests! #Abstract this into a function?
+    # Upload our tests to Appveyor tests' storage
     If ($ENV:BHBuildSystem -eq 'AppVeyor') {
-        # "Uploading $ProjectRoot\$TestFile to AppVeyor"
-        # "JobID: $env:APPVEYOR_JOB_ID"
-
         (New-Object 'System.Net.WebClient').UploadFile(
             "https://ci.appveyor.com/api/testresults/nunit/${ENV:APPVEYOR_JOB_ID}", (Resolve-Path -Path ${ProjectRoot}/${TestFile})
         )
-        #Invoke-WebRequest -Uri https://ci.appveyor.com/api/testresults/nunit/${ENV:APPVEYOR_JOB_ID} -InFile ${ProjectRoot}/${TestFile} -Method POST
     }
     Remove-Item -Path ${ProjectRoot}/${TestFile} -Force -ErrorAction SilentlyContinue
 
