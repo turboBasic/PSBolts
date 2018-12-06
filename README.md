@@ -3,9 +3,38 @@ PSBolts
 
 ![0xHexagram][hexagram]
 -----------------------
-
 Everyday utilities wrapped in a Powershell module
 
+
+Requirements
+------------
+
+Windows Powershell 5.0+
+  or
+Windows Powershell Core 6.0+ on all supported platforms incl. Linux and MacOS
+
+
+Installation
+------------
+
+Install-Module -Name PSBolts
+
+
+
+Usage
+-----
+
+- Get list of commands:
+
+  `Get-Command -module PSBolts`  
+or  
+  `Get-ModuleNounsAndVerbs -module PSBolts`
+
+
+Advanced topics
+---------------
+
+### Build
 
 
 
