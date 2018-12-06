@@ -18,4 +18,6 @@ foreach ($folder in 'Classes', 'Private', 'Public')
     }
 }
 
-Export-ModuleMember -Function (Get-ChildItem -Path "$PSScriptRoot\Public\*.ps1").BaseName
+Export-ModuleMember -Function (
+    Get-ChildItem -Path (Join-Path -Path ${PSScriptRoot} -ChildPath Public/*.ps1)
+).BaseName
