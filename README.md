@@ -11,15 +11,15 @@ Everyday utilities wrapped in a Powershell module
 Requirements
 ------------
 
-Windows Powershell 5.0+
-  or
+Windows Powershell 5.0+   
+  or   
 Windows Powershell Core 6.0+ on all supported platforms incl. Linux and MacOS
 
 
 Installation
 ------------
 
-Install-Module -Name PSBolts
+`Install-Module -Name PSBolts`
 
 
 
@@ -37,6 +37,8 @@ Advanced topics
 ---------------
 
 ### Build
+
+`./build.ps1`
 
 
 
