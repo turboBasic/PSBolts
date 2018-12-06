@@ -61,10 +61,10 @@ Task Test -Depends UnitTests {
         # "Uploading $ProjectRoot\$TestFile to AppVeyor"
         # "JobID: $env:APPVEYOR_JOB_ID"
 
-        #(New-Object 'System.Net.WebClient').UploadFile(
-        #    "https://ci.appveyor.com/api/testresults/nunit/${ENV:APPVEYOR_JOB_ID}", (Resolve-Path -Path ${ProjectRoot}/${TestFile})
-        #)
-        Invoke-WebRequest -Uri https://ci.appveyor.com/api/testresults/nunit/${ENV:APPVEYOR_JOB_ID} -InFile ${ProjectRoot}/${TestFile} -Method POST
+        (New-Object 'System.Net.WebClient').UploadFile(
+            "https://ci.appveyor.com/api/testresults/nunit/${ENV:APPVEYOR_JOB_ID}", (Resolve-Path -Path ${ProjectRoot}/${TestFile})
+        )
+        #Invoke-WebRequest -Uri https://ci.appveyor.com/api/testresults/nunit/${ENV:APPVEYOR_JOB_ID} -InFile ${ProjectRoot}/${TestFile} -Method POST
     }
     Remove-Item -Path ${ProjectRoot}/${TestFile} -Force -ErrorAction SilentlyContinue
 
