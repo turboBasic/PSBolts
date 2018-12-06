@@ -43,7 +43,7 @@ Task UnitTests -Depends Init {
 
 Task Test -Depends UnitTests {
     $lines
-    "`n`tSTATUS: Testing with PowerShell $PSVersion"
+    "`nSTATUS: Testing with PowerShell $PSVersion"
 
     # Gather test results. Store them in a variable and file
     $pesterParameters = @{
