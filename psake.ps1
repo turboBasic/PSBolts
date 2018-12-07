@@ -115,7 +115,9 @@ Task Build -Depends Test {
             git add --all
             git status
             git commit --message "Update version to $version"
-            git push origin master
+            Write-Verbose "Git commit is successful"
+            git remove --verbose
+            git push origin master --verbose
             Write-Host "PSBolts PowerShell module version $version published to GitHub." -ForegroundColor Cyan
         }
         Catch 
