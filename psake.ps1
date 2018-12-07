@@ -114,42 +114,42 @@ Task Build -Depends Test {
         Add-Content -Path ${HOME}/.git-credentials -Value "https://${ENV:GithubKey}:x-oauth-basic@github.com`n"
 
         # Prepare commit
-        $out = git checkout master -q 2>&1
+        $out = git checkout master --quiet 2>&1
         if ($?) {
             $out
+            Write-Host "SUCCESS: git checkout master"
         }
         else {
             $out.Exception
         }
-        Write-Host "SUCCESS: git checkout master"
         git remote set-url origin "https://github.com/${GithubUser}/${ENV:BHProjectName}.git"
         # Write-Host "SUCCESS: remote set-url"
         # git remote --verbose
         # git add --all
         # Write-Host "SUCCESS: git add --all"
         # git status
-        $out = git commit -a -m "Update version to $version" 2>&1
+        $out = git commit --all --message="Update version to $version" 2>&1
         if ($?) {
             $out
+            Write-Host "Git commit is successful"
         }
         else {
             $out.Exception
         }
-        Write-Host "Git commit is successful"
         # Publish the new version back to Master on GitHub
         Try {
             # Set up a path to the git.exe cmd, import posh-git to give us control over git, and then push changes to GitHub
             # Note that "update version" is included in the appveyor.yml file's "skip a build" regex to avoid a loop
             #$env:Path += ";$env:ProgramFiles\Git\cmd"
             #Import-Module posh-git -ErrorAction Stop
-            $out = git push origin master 2>&1
+            $out = git push origin master --porcelain 2>&1
             if ($?) {
                 $out
+                Write-Host "PSBolts PowerShell module version $version published to GitHub." -ForegroundColor Cyan
             }
             else {
                 $out.Exception
             }
-            Write-Host "PSBolts PowerShell module version $version published to GitHub." -ForegroundColor Cyan
         }
         Catch {
             Write-Warning "Publishing update $version to GitHub failed."
