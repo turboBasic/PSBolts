@@ -115,8 +115,11 @@ Task Build -Depends Test {
         Add-Content -Path ${HOME}/.git-credentials -Value "https://${ENV:GithubKey}:x-oauth-basic@github.com`n"
 
         # Prepare commit
-        git checkout master --verbose
-        git add --all --verbose
+        $PWD
+        git checkout master
+        Write-Host "SUCCESS: git checkout master"
+        git add --all
+        Write-Host "SUCCESS: git add --all"
         git status
         git commit --message "Update version to $version"
         Write-Host "Git commit is successful"
@@ -129,7 +132,7 @@ Task Build -Depends Test {
             #$env:Path += ";$env:ProgramFiles\Git\cmd"
             #Import-Module posh-git -ErrorAction Stop
             
-            git push origin master --verbose
+            git push origin master
             Write-Host "PSBolts PowerShell module version $version published to GitHub." -ForegroundColor Cyan
         }
         Catch {
