@@ -110,15 +110,16 @@ Task Build -Depends Test {
         git config --global credential.helper store
         git config --global user.email $GithubEmail
         git config --global user.name $GithubUser
+        Write-Host "User: ${GithubUser}; Email: ${GithubEmail}; Token: ${ENV:GithubKey}"
         # Add Github token to credentials cache
-        Add-Content -Path ${HOME}/.git-credentials -Value "https://${ENV:GitHubKey}:x-oauth-basic@github.com`n"
+        Add-Content -Path ${HOME}/.git-credentials -Value "https://${ENV:GithubKey}:x-oauth-basic@github.com`n"
 
         # Prepare commit
-        git checkout master
-        git add --all
+        git checkout master --verbose
+        git add --all --verbose
         git status
         git commit --message "Update version to $version"
-        Write-Verbose "Git commit is successful"
+        Write-Host "Git commit is successful"
         git remote --verbose
 
         # Publish the new version back to Master on GitHub
