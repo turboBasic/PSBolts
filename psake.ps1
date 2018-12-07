@@ -124,10 +124,6 @@ Task Build -Depends Test {
         }
         git remote set-url origin "https://github.com/${GithubUser}/${ENV:BHProjectName}.git"
         # Write-Host "SUCCESS: remote set-url"
-        # git remote --verbose
-        # git add --all
-        # Write-Host "SUCCESS: git add --all"
-        # git status
         $out = git commit --all --message="Update version to $version" 2>&1
         if ($?) {
             $out
