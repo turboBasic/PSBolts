@@ -114,26 +114,41 @@ Task Build -Depends Test {
         Add-Content -Path ${HOME}/.git-credentials -Value "https://${ENV:GithubKey}:x-oauth-basic@github.com`n"
 
         # Prepare commit
-#        git checkout master
-#        Write-Host "SUCCESS: git checkout master"
+        $out = git checkout master 2>&1
+        if ($?) {
+            $out
+        }
+        else {
+            $out.Exception
+        }
+        Write-Host "SUCCESS: git checkout master"
         git remote set-url origin "https://github.com/${GithubUser}/${ENV:BHProjectName}.git"
-        Write-Host "SUCCESS: remote set-url"
-        git remote --verbose
-        git add --all
-        Write-Host "SUCCESS: git add --all"
-#        git status
-        git commit -a -m "Update version to $version"
+        # Write-Host "SUCCESS: remote set-url"
+        # git remote --verbose
+        # git add --all
+        # Write-Host "SUCCESS: git add --all"
+        # git status
+        $out = git commit -a -m "Update version to $version" 2>&1
+        if ($?) {
+            $out
+        }
+        else {
+            $out.Exception
+        }
         Write-Host "Git commit is successful"
-
-
         # Publish the new version back to Master on GitHub
         Try {
             # Set up a path to the git.exe cmd, import posh-git to give us control over git, and then push changes to GitHub
             # Note that "update version" is included in the appveyor.yml file's "skip a build" regex to avoid a loop
             #$env:Path += ";$env:ProgramFiles\Git\cmd"
             #Import-Module posh-git -ErrorAction Stop
-            
-            git push origin master
+            $out = git push origin master 2>&1
+            if ($?) {
+                $out
+            }
+            else {
+                $out.Exception
+            }
             Write-Host "PSBolts PowerShell module version $version published to GitHub." -ForegroundColor Cyan
         }
         Catch {
