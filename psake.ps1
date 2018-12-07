@@ -17,6 +17,9 @@ Properties {
     if ($ENV:BHCommitMessage -match "!verbose") {
         $Verbose = @{ Verbose = $True }
     }
+
+    $GithubUser = 'turboBasic'
+    $GithubEmail = 'off@boun.cr'
 }
 
 Task Default -Depends Deploy
@@ -103,25 +106,32 @@ Task Build -Depends Test {
 
         Update-Metadata -Path ${ENV:BHPSModuleManifest} -PropertyName ModuleVersion -Value $version
 
+        # Git configuration for creating new commit
+        git config --global credential.helper store
+        git config --global user.email $GithubEmail
+        git config --global user.name $GithubUser
+        # Add Github token to credentials cache
+        Add-Content -Path ${HOME}/.git-credentials -Value "https://${ENV:GitHubKey}:x-oauth-basic@github.com`n"
+
+        # Prepare commit
+        git checkout master
+        git add --all
+        git status
+        git commit --message "Update version to $version"
+        Write-Verbose "Git commit is successful"
+        git remote --verbose
 
         # Publish the new version back to Master on GitHub
-        Try 
-        {
+        Try {
             # Set up a path to the git.exe cmd, import posh-git to give us control over git, and then push changes to GitHub
             # Note that "update version" is included in the appveyor.yml file's "skip a build" regex to avoid a loop
             #$env:Path += ";$env:ProgramFiles\Git\cmd"
             #Import-Module posh-git -ErrorAction Stop
-            git checkout master
-            git add --all
-            git status
-            git commit --message "Update version to $version"
-            Write-Verbose "Git commit is successful"
-            git remove --verbose
+            
             git push origin master --verbose
             Write-Host "PSBolts PowerShell module version $version published to GitHub." -ForegroundColor Cyan
         }
-        Catch 
-        {
+        Catch {
             Write-Warning "Publishing update $version to GitHub failed."
             throw $_
         }
