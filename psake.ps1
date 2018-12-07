@@ -114,7 +114,7 @@ Task Build -Depends Test {
         Add-Content -Path ${HOME}/.git-credentials -Value "https://${ENV:GithubKey}:x-oauth-basic@github.com`n"
 
         # Prepare commit
-        $out = git checkout master 2>&1
+        $out = git checkout master -q 2>&1
         if ($?) {
             $out
         }
