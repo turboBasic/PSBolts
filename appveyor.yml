@@ -10,9 +10,16 @@ os: WMF 5
 # Skip on updates to the readme.
 # We can force this by adding [skip ci] or [ci skip] anywhere in commit message 
 skip_commits:
-  message: /updated (readme|doc).*|update (readme|doc).*s|Doc:.*/
+  files:
+    - README.md
+  message: /updated (readme|doc).*|update (readme|doc).*s|Doc:.*|update version.*|update appveyor.*/
 
 build: false
+
+# There's no need to alter the build number for a Pull Request (PR) since they don't modify anything
+pull_requests:
+  do_not_increment_build_number: true
+
 
 #Kick off the CI/CD pipeline
 test_script:

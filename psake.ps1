@@ -85,17 +85,46 @@ Task Build -Depends Test {
     # Load the module, read the exported functions, update the psd1 FunctionsToExport
     Set-ModuleFunctions -Name ${ENV:BHPSModuleManifest} -FunctionsToExport $functions
 
-    # Bump the module version
-    $version = [Version] (Step-Version (Get-Metadata -Path ${ENV:BHPSModuleManifest}))
-    $galleryVersion = Get-NextPSGalleryVersion -Name ${ENV:BHProjectName}
-    if ($version -lt $galleryVersion)
-    {
-        $version = $galleryVersion
+    if ($ENV:APPVEYOR_REPO_BRANCH -ne 'master') {
+        Write-Warning -Message "Skipping version increment and publish for branch $ENV:APPVEYOR_REPO_BRANCH"
     }
-    $version = [Version]::New( $version.Major, $version.Minor, $version.Build, ${ENV:BHBuildNumber} )
-    Write-Host "Using version: $version"
+    elseif ($ENV:APPVEYOR_PULL_REQUEST_NUMBER -gt 0) {
+        Write-Warning -Message "Skipping version increment and publish for pull request #$ENV:APPVEYOR_PULL_REQUEST_NUMBER"
+    } 
+    else {
+        # Bump the module version
+        $version = [Version] (Step-Version (Get-Metadata -Path ${ENV:BHPSModuleManifest}))
+        $galleryVersion = Get-NextPSGalleryVersion -Name ${ENV:BHProjectName}
+        if ($version -lt $galleryVersion) {
+            $version = $galleryVersion
+        }
+        $version = [Version]::New( $version.Major, $version.Minor, $version.Build, ${ENV:BHBuildNumber} )
+        Write-Host "Using version: $version"
 
-    Update-Metadata -Path ${ENV:BHPSModuleManifest} -PropertyName ModuleVersion -Value $version
+        Update-Metadata -Path ${ENV:BHPSModuleManifest} -PropertyName ModuleVersion -Value $version
+
+
+        # Publish the new version back to Master on GitHub
+        Try 
+        {
+            # Set up a path to the git.exe cmd, import posh-git to give us control over git, and then push changes to GitHub
+            # Note that "update version" is included in the appveyor.yml file's "skip a build" regex to avoid a loop
+            #$env:Path += ";$env:ProgramFiles\Git\cmd"
+            #Import-Module posh-git -ErrorAction Stop
+            git checkout master
+            git add --all
+            git status
+            git commit --signoff --message "Update version to $version"
+            git push origin master
+            Write-Host "PSBolts PowerShell module version $version published to GitHub." -ForegroundColor Cyan
+        }
+        Catch 
+        {
+            Write-Warning "Publishing update $version to GitHub failed."
+            throw $_
+        }
+
+    }
 }
 
 Task Deploy -Depends Build {
