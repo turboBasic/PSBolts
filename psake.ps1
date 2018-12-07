@@ -1,6 +1,5 @@
 # PSake makes variables declared here available in other scriptblocks
 Properties {
-    # Init some things
 
     # Find the build folder based on build system
     $ProjectRoot = $ENV:BHProjectPath
@@ -20,9 +19,14 @@ Properties {
 
     $GithubUser = 'turboBasic'
     $GithubEmail = 'off@boun.cr'
+
 }
 
+
+
 Task Default -Depends Deploy
+
+
 
 Task Init {
     $lines
@@ -31,6 +35,8 @@ Task Init {
     Get-Item -Path ENV:BH* | Format-List
     "`n"
 }
+
+
 
 Task UnitTests -Depends Init {
     $lines
@@ -43,6 +49,8 @@ Task UnitTests -Depends Init {
     }
     "`n"
 }
+
+
 
 Task Test -Depends UnitTests {
     $lines
@@ -77,6 +85,8 @@ Task Test -Depends UnitTests {
     "`n"
 }
 
+
+
 Task Build -Depends Test {
     $lines
 
@@ -85,75 +95,84 @@ Task Build -Depends Test {
         Select-Object -ExpandProperty BaseName
 
 
-    # Load the module, read the exported functions, update the psd1 FunctionsToExport
+    # Load the module, read the exported functions, update the FunctionsToExport in `module.psd1`
     Set-ModuleFunctions -Name ${ENV:BHPSModuleManifest} -FunctionsToExport $functions
 
     if ($ENV:APPVEYOR_REPO_BRANCH -ne 'master') {
-        Write-Warning -Message "Skipping version increment and publish for branch $ENV:APPVEYOR_REPO_BRANCH"
+        Write-Warning -Message "Skipping version increment and publish for branch ${ENV:APPVEYOR_REPO_BRANCH}"
     }
     elseif ($ENV:APPVEYOR_PULL_REQUEST_NUMBER -gt 0) {
-        Write-Warning -Message "Skipping version increment and publish for pull request #$ENV:APPVEYOR_PULL_REQUEST_NUMBER"
+        Write-Warning -Message "Skipping version increment and publish for pull request #${ENV:APPVEYOR_PULL_REQUEST_NUMBER}"
     } 
-    else {
-        # Bump the module version
-        $version = [Version] (Step-Version (Get-Metadata -Path ${ENV:BHPSModuleManifest}))
-        $galleryVersion = Get-NextPSGalleryVersion -Name ${ENV:BHProjectName}
-        if ($version -lt $galleryVersion) {
-            $version = $galleryVersion
-        }
-        $version = [Version]::New( $version.Major, $version.Minor, $version.Build, ${ENV:BHBuildNumber} )
-        Write-Host "Using version: $version"
+    else 
+    {
+        #region Bump the module version
+            [Version] $version = Step-Version -Version (Get-Metadata -Path ${ENV:BHPSModuleManifest})
+            $galleryVersion = Get-NextPSGalleryVersion -Name ${ENV:BHProjectName}
 
-        Update-Metadata -Path ${ENV:BHPSModuleManifest} -PropertyName ModuleVersion -Value $version
+            if ($version -lt $galleryVersion) {
+                $version = $galleryVersion
+            }
+            $version = [Version]::New( $version.Major, $version.Minor, $version.Build, ${ENV:BHBuildNumber} )
+            Write-Host "Using version: $version"
 
-        # Git configuration for creating new commit
-        git config --global credential.helper store
-        git config --global user.email $GithubEmail
-        git config --global user.name $GithubUser
-        # Add Github token to credentials cache
-        Add-Content -Path ${HOME}/.git-credentials -Value "https://${ENV:GithubKey}:x-oauth-basic@github.com`n"
+            Update-Metadata -Path ${ENV:BHPSModuleManifest} -PropertyName ModuleVersion -Value $version
+        #endregion
 
-        # Prepare commit
-        $out = git checkout master --quiet 2>&1
-        if ($?) {
-            $out
-            Write-Host "SUCCESS: git checkout master"
-        }
-        else {
-            $out.Exception
-        }
-        git remote set-url origin "https://github.com/${GithubUser}/${ENV:BHProjectName}.git"
-        # Write-Host "SUCCESS: remote set-url"
+
+        #region Prepare Git configuration for creating new commit
+            Install-Module -Name Posh-git -Scope CurrentUser
+            Import-Module -Name Posh-git
+
+            git config --global credential.helper store
+            git config --global user.email $GithubEmail
+            git config --global user.name $GithubUser
+            
+            # Add Github token to credentials cache
+            Add-Content -Path ${HOME}/.git-credentials -Value "https://${ENV:GithubKey}:x-oauth-basic@github.com`n"
+        #endregion
+
+        #region Prepare branch for commit
+            $out = git checkout master --quiet 2>&1
+            if ($?) {
+                $out
+            }
+            else {
+                $out.Exception
+            }
+
+            git remote set-url origin "https://github.com/${GithubUser}/${ENV:BHProjectName}.git"
+        #endregion
+
+        # Commit
         $out = git commit --all --message="Update version to $version" 2>&1
         if ($?) {
             $out
-            Write-Host "Git commit is successful"
         }
         else {
             $out.Exception
         }
+
         # Publish the new version back to Master on GitHub
         Try {
-            # Set up a path to the git.exe cmd, import posh-git to give us control over git, and then push changes to GitHub
-            # Note that "update version" is included in the appveyor.yml file's "skip a build" regex to avoid a loop
-            #$env:Path += ";$env:ProgramFiles\Git\cmd"
-            #Import-Module posh-git -ErrorAction Stop
             $out = git push origin master --porcelain 2>&1
             if ($?) {
                 $out
-                Write-Host "PSBolts PowerShell module version $version published to GitHub." -ForegroundColor Cyan
+                Write-Host -Message "PSBolts PowerShell module version $version published to GitHub" -ForegroundColor Cyan
             }
             else {
                 $out.Exception
             }
         }
         Catch {
-            Write-Warning "Publishing update $version to GitHub failed."
+            Write-Warning -Message "Publishing update $version to GitHub failed"
             throw $_
         }
 
     }
 }
+
+
 
 Task Deploy -Depends Build {
     $lines
@@ -161,7 +180,7 @@ Task Deploy -Depends Build {
     # Gate deployment
     if (
         $ENV:BHBuildSystem -ne 'Unknown' -and
-        $ENV:BHBranchName -eq "master" -and
+        $ENV:BHBranchName -eq 'master' -and
         $ENV:BHCommitMessage -match '!deploy'
     )
     {
