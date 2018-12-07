@@ -110,16 +110,14 @@ Task Build -Depends Test {
         git config --global credential.helper store
         git config --global user.email $GithubEmail
         git config --global user.name $GithubUser
-        Write-Host "User: ${GithubUser}; Email: ${GithubEmail}; Token: ${ENV:GithubKey}"
         # Add Github token to credentials cache
         Add-Content -Path ${HOME}/.git-credentials -Value "https://${ENV:GithubKey}:x-oauth-basic@github.com`n"
-        Write-Host "$(Get-Content ${HOME}/.git-credentials)"
-
 
         # Prepare commit
-        git checkout master
-        Write-Host "SUCCESS: git checkout master"
+#        git checkout master
+#        Write-Host "SUCCESS: git checkout master"
         git remote set-url origin "https://github.com/${GithubUser}/${ENV:BHProjectName}.git"
+        Write-Host "SUCCESS: remote set-url"
         git remote --verbose
         git add --all
         Write-Host "SUCCESS: git add --all"
