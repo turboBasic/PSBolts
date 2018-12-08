@@ -88,9 +88,14 @@ Task Test -Depends UnitTests {
 Task Build -Depends Test {
     $lines
 
-    $functions = Get-ChildItem -Path ${PSScriptRoot}/${ENV:BHProjectName}/Public/*.ps1 |
-        Where-Object Name -NotMatch Tests |
-        Select-Object -ExpandProperty BaseName
+    $fileParameters = @{
+        Path        = "${PSScriptRoot}/${ENV:BHProjectName}/Public/*"
+        Recurse     = $true
+        Filter      = '*.ps1'
+        Exclude     = '*.Tests.ps1'
+        ErrorAction = 'SilentlyContinue'
+    }
+    $functions = (Get-ChildItem @fileParameters).BaseName
 
 
     # Load the module, read the exported functions, update the FunctionsToExport in `module.psd1`
@@ -108,13 +113,15 @@ Task Build -Depends Test {
 
         #region Bump the module version
             [Version] $version = Step-Version -Version (Get-Metadata -Path ${ENV:BHPSModuleManifest})
-            $galleryVersion = Get-NextPSGalleryVersion -Name ${ENV:BHProjectName}
+            Write-Host "Version based on module manifest: $version" -ForegroundColor Cyan
+            $galleryVersion = Get-NextPSGalleryVersion -Name ${ENV:BHProjectName} 
+            Write-Host "Version based on Powershell gallery's latest published module: $galleryVersion" -ForegroundColor Cyan
 
             if ($version -lt $galleryVersion) {
                 $version = $galleryVersion
             }
             $version = [Version]::New( $version.Major, $version.Minor, $version.Build, ${ENV:BHBuildNumber} )
-            Write-Host "Using version: $version"
+            Write-Host "Using version: $version" -ForegroundColor Cyan
 
             Update-Metadata -Path ${ENV:BHPSModuleManifest} -PropertyName ModuleVersion -Value $version
         #endregion
@@ -133,25 +140,34 @@ Task Build -Depends Test {
         # Git's stderr should be redirected otherwise Appveyor build fails
         #
         
-        # Checkout branch as by default we have detached HEAD
+        # Checkout master branch as by default we have detached HEAD
         git checkout master --quiet 2>&1
-        git commit --all --message="Update version to $version" 2>&1
 
-        # Publish the new version back to Master on GitHub
-        Try {
-            git push origin master --porcelain 2>&1
+        # Commit with appropriate message so that the new commit is skipped in appveyor.yml in order to avoid endless loop
+        git commit --all --message="Update version to $version; skip ci" 2>&1
+
+        # Add version tag to commit
+        if ($ENV:BHCommitMessage -match '!Release' -or
+            $ENV:BHCommitMessage -match '!Tag'
+        ) {
+            git tag "v${version}" 2>&1
+        }
+
+
+        # Publish the new version back to Master on GitHub, together with tags, if any
+        try {
+            git push origin master --follow-tags --porcelain 2>&1
             if ($?) {
-                Write-Host -Message "PSBolts PowerShell module version $version published to GitHub" -ForegroundColor Cyan
+                Write-Host "PSBolts PowerShell module version $version published to GitHub" -ForegroundColor Cyan
             }
             else {
-                Throw
+                throw "Cannot push to GitHub repository"
             }
         }
-        Catch {
+        catch {
             Write-Warning -Message "Publishing update $version to GitHub failed"
             throw $_
         }
-
     }
 }
 
@@ -163,8 +179,11 @@ Task Deploy -Depends Build {
     # Gate deployment
     if (
         $ENV:BHBuildSystem -ne 'Unknown' -and
-        $ENV:BHBranchName -eq 'master' -and
-        $ENV:BHCommitMessage -match '!deploy'
+        $ENV:BHBranchName -eq 'Master' -and
+        ( 
+            $ENV:BHCommitMessage -match '!Deploy' -or
+            $ENV:BHCommitMessage -match '!Tag'
+        )
     )
     {
         $Params = @{
@@ -179,6 +198,6 @@ Task Deploy -Depends Build {
         "Skipping deployment: To deploy, ensure that...`n" +
         "`t* You are in a known build system (Current: ${ENV:BHBuildSystem})`n" +
         "`t* You are committing to the master branch (Current: ${ENV:BHBranchName}) `n" +
-        "`t* Your commit message includes !deploy (Current: ${ENV:BHCommitMessage})"
+        "`t* Your commit message includes !Deploy (Current: ${ENV:BHCommitMessage})"
     }
 }
