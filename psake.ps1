@@ -151,12 +151,12 @@ Task Build -Depends Test {
             $ENV:BHCommitMessage -match '!Tag'
         ) {
             git tag "v${version}" 2>&1
+            Write-Host "Tag 'v${version}' added" -ForegroundColor Cyan
         }
-
 
         # Publish the new version back to Master on GitHub, together with tags, if any
         try {
-            git push origin master --follow-tags --porcelain 2>&1
+            git push origin master --porcelain 2>&1
             if ($?) {
                 Write-Host "PSBolts PowerShell module version $version published to GitHub" -ForegroundColor Cyan
             }
@@ -168,6 +168,9 @@ Task Build -Depends Test {
             Write-Warning -Message "Publishing update $version to GitHub failed"
             throw $_
         }
+
+        git push --tags 2>&1
+        Write-Host "Tags pushed to the Github" -ForegroundColor Cyan
     }
 }
 
