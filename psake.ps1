@@ -129,20 +129,12 @@ Task Build -Depends Test {
             Add-Content -Path ${HOME}/.git-credentials -Value "https://${ENV:GithubKey}:x-oauth-basic@github.com`n"
         #endregion
 
-        #region Prepare branch for commit
-            git checkout master --quiet 2>&1
-            # if ($?) {
-            #     $out
-            # }
-            # else {
-            #     $out.Exception
-            # }
-
-            # git remote set-url origin "https://github.com/${GithubUser}/${ENV:BHProjectName}.git"
-
-            # Write-Host -Message "REMOTE: $(git remote --verbose)"
-        #endregion
-
+        #
+        # Git's stderr should be redirected otherwise Appveyor build fails
+        #
+        
+        # Checkout branch as by default we have detached HEAD
+        git checkout master --quiet 2>&1
         git commit --all --message="Update version to $version" 2>&1
 
         # Publish the new version back to Master on GitHub
