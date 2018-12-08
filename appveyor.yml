@@ -1,3 +1,4 @@
+---
 # See http://www.appveyor.com/docs/appveyor-yml for many more options
 
 environment:
@@ -7,7 +8,6 @@ environment:
     secure: +GKoYZGuiGHF8CPvPCJN/O0Ch2RY+KMpS4h6EQz6n3ClU/Rs2OcpyJX2ItBmBqyb
 
 
-# Allow WMF5 (i.e. PowerShellGallery functionality)
 os: WMF 5
 
 
@@ -16,7 +16,7 @@ os: WMF 5
 skip_commits:
   files:
     - README.md
-  message: /updated (readme|doc).*|update (readme|doc).*s|Doc:.*|update version.*|update appveyor.*/
+  message: /updated (readme|doc).*|update (readme|doc).*s|Doc:.*|update version.*|update appveyor.*|.*skip ci.*/
 
   
 build: false
@@ -29,3 +29,6 @@ pull_requests:
 #Kick off the CI/CD pipeline
 test_script:
   - ps: . .\build.ps1
+
+
+...
