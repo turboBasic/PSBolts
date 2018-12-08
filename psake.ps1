@@ -17,9 +17,6 @@ Properties {
         $Verbose = @{ Verbose = $True }
     }
 
-    $GithubUser = 'turboBasic'
-    $GithubEmail = 'off@boun.cr'
-
 }
 
 
@@ -69,8 +66,9 @@ Task Test -Depends UnitTests {
 
     # Upload our tests to Appveyor tests' storage
     If ($ENV:BHBuildSystem -eq 'AppVeyor') {
-        (New-Object 'System.Net.WebClient').UploadFile(
-            "https://ci.appveyor.com/api/testresults/nunit/${ENV:APPVEYOR_JOB_ID}", (Resolve-Path -Path ${ProjectRoot}/${TestFile})
+        [System.Net.WebClient]::new().UploadFile(
+            "https://ci.appveyor.com/api/testresults/nunit/${ENV:APPVEYOR_JOB_ID}", 
+            (Resolve-Path -Path ${ProjectRoot}/${TestFile})
         )
     }
     Remove-Item -Path ${ProjectRoot}/${TestFile} -Force -ErrorAction SilentlyContinue
@@ -96,7 +94,7 @@ Task Build -Depends Test {
 
 
     # Load the module, read the exported functions, update the FunctionsToExport in `module.psd1`
-    Set-ModuleFunctions -Name ${ENV:BHPSModuleManifest} -FunctionsToExport $functions
+    Set-ModuleFunctions -Name $ENV:BHPSModuleManifest -FunctionsToExport $functions
 
     if ($ENV:APPVEYOR_REPO_BRANCH -ne 'master') {
         Write-Warning -Message "Skipping version increment and publish for branch ${ENV:APPVEYOR_REPO_BRANCH}"
@@ -106,6 +104,8 @@ Task Build -Depends Test {
     } 
     else 
     {
+        # This is executed only in `master` branch
+
         #region Bump the module version
             [Version] $version = Step-Version -Version (Get-Metadata -Path ${ENV:BHPSModuleManifest})
             $galleryVersion = Get-NextPSGalleryVersion -Name ${ENV:BHProjectName}
@@ -121,47 +121,38 @@ Task Build -Depends Test {
 
 
         #region Prepare Git configuration for creating new commit
-            Install-Module -Name Posh-git -Scope CurrentUser
-            Import-Module -Name Posh-git
-
             git config --global credential.helper store
-            git config --global user.email $GithubEmail
-            git config --global user.name $GithubUser
+            git config --global user.email ${ENV:APPVEYOR_REPO_COMMIT_AUTHOR_EMAIL}
+            git config --global user.name ${ENV:APPVEYOR_REPO_COMMIT_AUTHOR}
             
             # Add Github token to credentials cache
             Add-Content -Path ${HOME}/.git-credentials -Value "https://${ENV:GithubKey}:x-oauth-basic@github.com`n"
         #endregion
 
         #region Prepare branch for commit
-            $out = git checkout master --quiet 2>&1
-            if ($?) {
-                $out
-            }
-            else {
-                $out.Exception
-            }
+            # $out = git checkout master --quiet 2>&1
+            # if ($?) {
+            #     $out
+            # }
+            # else {
+            #     $out.Exception
+            # }
 
-            git remote set-url origin "https://github.com/${GithubUser}/${ENV:BHProjectName}.git"
+            # git remote set-url origin "https://github.com/${GithubUser}/${ENV:BHProjectName}.git"
+
+            Write-Host -Message "REMOTE: $(git remote --verbose)"
         #endregion
 
-        # Commit
-        $out = git commit --all --message="Update version to $version" 2>&1
-        if ($?) {
-            $out
-        }
-        else {
-            $out.Exception
-        }
+        git commit --all --message="Update version to $version" 2>&1
 
         # Publish the new version back to Master on GitHub
         Try {
-            $out = git push origin master --porcelain 2>&1
+            git push origin master --porcelain 2>&1
             if ($?) {
-                $out
                 Write-Host -Message "PSBolts PowerShell module version $version published to GitHub" -ForegroundColor Cyan
             }
             else {
-                $out.Exception
+                Throw
             }
         }
         Catch {
