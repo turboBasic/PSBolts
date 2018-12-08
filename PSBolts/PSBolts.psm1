@@ -1,23 +1,31 @@
 Write-Verbose "Importing Functions"
 
-
-
-foreach ($folder in 'Classes', 'Private', 'Public')
-{
-    $root = Join-Path -Path $PSScriptRoot -ChildPath $folder
-    if (Test-Path -Path $root)
-    {
-        Write-Verbose "Processing folder $root"
-
-        Get-ChildItem -Path $root -Filter *.ps1 |
-            Where-Object Name -NotLike *.Tests.ps1 |
-            ForEach-Object {
-                Write-Verbose "dot source $($_.FullName)"
-                . $_.FullName
-            }
-    }
+$fileParameters = @{
+    Recurse = $true
+    Filter  = '*.ps1'
+    Exclude = '*.Tests.ps1'
+    ErrorAction = 'SilentlyContinue'
 }
 
-Export-ModuleMember -Function (
-    Get-ChildItem -Path (Join-Path -Path ${PSScriptRoot} -ChildPath Public/*.ps1)
-).BaseName
+
+$Public = @( Get-ChildItem -Path ${PSScriptRoot}/Public/* @fileParameters )
+
+$All =    @( Get-ChildItem -Path ${PSScriptRoot}/Private/* @fileParameters ) +
+          @( Get-ChildItem -Path ${PSScriptRoot}/Classes/* @fileParameters ) +
+          $Public
+
+foreach ($import in $All.FullName)
+{
+    Write-Verbose "dot source $import"
+    try 
+    {
+        . $import
+    }
+    catch
+    {
+        Write-Error -Message "Failed to import function ${import}: $_"
+    }
+
+}
+
+Export-ModuleMember -Function $Public.BaseName
