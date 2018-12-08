@@ -130,7 +130,7 @@ Task Build -Depends Test {
         #endregion
 
         #region Prepare branch for commit
-            # $out = git checkout master --quiet 2>&1
+            git checkout master --quiet 2>&1
             # if ($?) {
             #     $out
             # }
@@ -140,7 +140,7 @@ Task Build -Depends Test {
 
             # git remote set-url origin "https://github.com/${GithubUser}/${ENV:BHProjectName}.git"
 
-            Write-Host -Message "REMOTE: $(git remote --verbose)"
+            # Write-Host -Message "REMOTE: $(git remote --verbose)"
         #endregion
 
         git commit --all --message="Update version to $version" 2>&1
