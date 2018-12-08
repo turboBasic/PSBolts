@@ -5,7 +5,7 @@ param(
 # Grab nuget bits, install modules, set build variables, start build.
 Get-PackageProvider -Name NuGet -ForceBootstrap | Out-Null
 
-Install-Module -Name psake, PSDeploy, BuildHelpers, Pester -Scope CurrentUser  # -Force
+Install-Module -Name psake, PSDeploy, BuildHelpers, Pester, posh-git -Scope CurrentUser  # -Force
 # Install-Module -Name PoshRSJob -Scope CurrentUser
 
 Set-BuildEnvironment
