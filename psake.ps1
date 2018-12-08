@@ -169,7 +169,7 @@ Task Build -Depends Test {
             throw $_
         }
 
-        git push --tags 2>&1
+        git push --tags --porcelain 2>&1
         Write-Host "Tags pushed to the Github" -ForegroundColor Cyan
     }
 }
