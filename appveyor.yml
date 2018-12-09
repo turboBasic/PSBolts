@@ -12,7 +12,7 @@ os: WMF 5
 
 
 # Skip on updates to the readme.
-# We can force this by adding [skip ci] or [ci skip] anywhere in commit message 
+# We can force this by adding ‘[skip ci]’ or ‘[ci skip]’ anywhere in commit message 
 skip_commits:
   files:
     - README.md
