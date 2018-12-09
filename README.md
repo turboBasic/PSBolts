@@ -46,7 +46,7 @@ Advanced topics
 
 #### Commit but do not build at all
 
-1. Commit with ‘[skip ci]’ in the commit message or other words (`appveyor.yml -> skip_commits`)
+1. Commit with ‘[skip ci]’ in the commit message or other skip words (`appveyor.yml -> skip_commits`)
 2. Push
 
 

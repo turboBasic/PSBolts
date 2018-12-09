@@ -24,6 +24,8 @@ Properties {
     # -----  -----  -----  --------
     # 1      2      3      -1
 
+
+
     $isMinorRelease = (
         $ENV:BHCommitMessage -match '!Release' -or
         $ENV:BHCommitMessage -match '!Tag'
@@ -37,6 +39,7 @@ Properties {
             $ENV:BHCommitMessage -match '!Deploy'
         )
     )
+
 }
 
 
@@ -106,94 +109,105 @@ Task Test -Depends UnitTests {
 Task Build -Depends Test {
     $lines
 
-    $fileParameters = @{
-        Path        = "${PSScriptRoot}/${ENV:BHProjectName}/Public/*"
-        Recurse     = $true
-        Filter      = '*.ps1'
-        Exclude     = '*.Tests.ps1'
-        ErrorAction = 'SilentlyContinue'
-    }
-    $functions = (Get-ChildItem @fileParameters).BaseName
-
-
-    # Load the module, read the exported functions, update the FunctionsToExport in `module.psd1`
-    Set-ModuleFunctions -Name $ENV:BHPSModuleManifest -FunctionsToExport $functions
 
     if ($ENV:APPVEYOR_REPO_BRANCH -ne 'master') {
         Write-Warning -Message "Skipping version increment and publish for branch ${ENV:APPVEYOR_REPO_BRANCH}"
+        return 
     }
-    elseif ($ENV:APPVEYOR_PULL_REQUEST_NUMBER -gt 0) {
+    if ($ENV:APPVEYOR_PULL_REQUEST_NUMBER -gt 0) {
         Write-Warning -Message "Skipping version increment and publish for pull request #${ENV:APPVEYOR_PULL_REQUEST_NUMBER}"
+        return
     } 
-    else 
-    {
-        # This is executed only in `master` branch
-
-        #region Bump the module version
-            $step = 'Patch'
-            if ($isMinorRelease) {
-                $step = 'Minor'
-            }
-            [Version] $version = Step-Version -Version (Get-Metadata -Path ${ENV:BHPSModuleManifest}) -By $step
-
-            Write-Host "Version based on module manifest: $version" -ForegroundColor Cyan
-            $galleryVersion = Get-NextPSGalleryVersion -Name ${ENV:BHProjectName} 
-            Write-Host "Version based on Powershell gallery's latest published module: $galleryVersion" -ForegroundColor Cyan
-
-            if ($version -lt $galleryVersion) {
-                $version = $galleryVersion
-            }
-            $version = [Version]::New( $version.Major, $version.Minor, $version.Build, ${ENV:BHBuildNumber} )
-            Write-Host "Using version: $version" -ForegroundColor Cyan
-
-            Update-Metadata -Path ${ENV:BHPSModuleManifest} -PropertyName ModuleVersion -Value $version
-        #endregion
-
-
-        #region Prepare Git configuration for creating new commit
-            git config --global credential.helper store
-            git config --global user.email ${ENV:APPVEYOR_REPO_COMMIT_AUTHOR_EMAIL}
-            git config --global user.name ${ENV:APPVEYOR_REPO_COMMIT_AUTHOR}
-            
-            # Add Github token to credentials cache
-            Add-Content -Path ${HOME}/.git-credentials -Value "https://${ENV:GithubKey}:x-oauth-basic@github.com`n"
-        #endregion
-
-        #
-        # Git's stderr should be redirected otherwise Appveyor build fails
-        #
-        
-        # Checkout master branch as by default we have detached HEAD
-        git checkout master --quiet 2>&1
-
-        # Commit with appropriate message so that the new commit is skipped in appveyor.yml in order to avoid endless loop
-        git commit --all --message="Update version to $version; skip ci" 2>&1
-
-        # Add version tag to commit
-        if ($isMinorRelease) {
-            $GithubReleaseTag = 'v{0}.{1}.{2}' -f $version.Major, $version.Minor, $version.Build
-            git tag $GithubReleaseTag 2>&1
-            Write-Host "Tag '$GithubReleaseTag' added" -ForegroundColor Cyan
-        }
-
-        # Publish the new version back to Master on GitHub, together with tags, if any
-        try {
-            git push origin master --porcelain 2>&1
-            if ($?) {
-                Write-Host "PSBolts PowerShell module version $version published to GitHub" -ForegroundColor Cyan
-            }
-            else {
-                throw "Cannot push to GitHub repository"
-            }
-        }
-        catch {
-            Write-Warning -Message "Publishing update $version to GitHub failed"
-            throw $_
-        }
-
-        git push --tags --porcelain 2>&1
-        Write-Host "Tags pushed to the Github" -ForegroundColor Cyan
+    if (-not $isDeployment) {
+        Write-Warning -Message "Skipping build task because 'isDeployment' condition is not met"
+        return
     }
+
+    #region Collect all public functions in the module
+
+        $fileParameters = @{
+            Path        = "${PSScriptRoot}/${ENV:BHProjectName}/Public/*"
+            Recurse     = $true
+            Filter      = '*.ps1'
+            Exclude     = '*.Tests.ps1'
+            ErrorAction = 'SilentlyContinue'
+        }
+        $functions = (Get-ChildItem @fileParameters).BaseName
+
+        # Load the module, read the exported functions, update the FunctionsToExport in `module.psd1`
+        Set-ModuleFunctions -Name $ENV:BHPSModuleManifest -FunctionsToExport $functions
+
+    #endregion
+
+    
+    #
+    # This is executed only in `master` branch
+    #
+
+    #region Bump the module version
+    $step = 'Patch'
+    if ($isMinorRelease) {
+        $step = 'Minor'
+    }
+    [Version] $version = Step-Version -Version (Get-Metadata -Path ${ENV:BHPSModuleManifest}) -By $step
+
+    Write-Host "Version based on module manifest: $version" -ForegroundColor Cyan
+    $galleryVersion = Get-NextPSGalleryVersion -Name ${ENV:BHProjectName} 
+    Write-Host "Version based on Powershell gallery's latest published module: $galleryVersion" -ForegroundColor Cyan
+
+    if ($version -lt $galleryVersion) {
+        $version = $galleryVersion
+    }
+    $version = [Version]::New( $version.Major, $version.Minor, $version.Build, ${ENV:BHBuildNumber} )
+    Write-Host "Using version: $version" -ForegroundColor Cyan
+
+    Update-Metadata -Path ${ENV:BHPSModuleManifest} -PropertyName ModuleVersion -Value $version
+    #endregion
+
+
+    #region Prepare Git configuration for creating new commit
+    git config --global credential.helper store
+    git config --global user.email ${ENV:APPVEYOR_REPO_COMMIT_AUTHOR_EMAIL}
+    git config --global user.name ${ENV:APPVEYOR_REPO_COMMIT_AUTHOR}
+        
+    # Add Github token to credentials cache
+    Add-Content -Path ${HOME}/.git-credentials -Value "https://${ENV:GithubKey}:x-oauth-basic@github.com`n"
+    #endregion
+
+    #
+    # Git's stderr should be redirected otherwise Appveyor build fails
+    #
+    
+    # Checkout master branch as by default we have detached HEAD
+    git checkout master --quiet 2>&1
+
+    # Commit with appropriate message so that the new commit is skipped in appveyor.yml in order to avoid endless loop
+    git commit --all --message="Update version to $version; skip ci" 2>&1
+
+    # Add version tag to commit
+    if ($isMinorRelease) {
+        $GithubReleaseTag = 'v{0}.{1}.{2}' -f $version.Major, $version.Minor, $version.Build
+        git tag $GithubReleaseTag 2>&1
+        Write-Host "Tag '$GithubReleaseTag' added" -ForegroundColor Cyan
+    }
+
+    # Publish the new version back to Master on GitHub, together with tags, if any
+    try {
+        git push origin master --porcelain 2>&1
+        if ($?) {
+            Write-Host "PSBolts PowerShell module version $version published to GitHub" -ForegroundColor Cyan
+        }
+        else {
+            throw "Cannot push to GitHub repository"
+        }
+    }
+    catch {
+        Write-Warning -Message "Publishing update $version to GitHub failed"
+        throw $_
+    }
+
+    git push --tags --porcelain 2>&1
+    Write-Host "Tags pushed to the Github" -ForegroundColor Cyan
 }
 
 
