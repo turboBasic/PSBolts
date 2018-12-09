@@ -12,7 +12,7 @@
 RootModule = 'PSBolts.psm1'
 
 # Version number of this module.
-ModuleVersion = '0.4.4.36'
+ModuleVersion = '0.5.0.37'
 
 # Supported PSEditions
 # CompatiblePSEditions = @()
