@@ -13,10 +13,30 @@ Properties {
     $lines = '-' * 70
 
     $Verbose = @{}
-    if ($ENV:BHCommitMessage -match "!verbose") {
+    if ($ENV:BHCommitMessage -match "!Verbose") {
         $Verbose = @{ Verbose = $True }
     }
 
+    # .Net ‘Version’ type:
+    #
+    # PS> [System.Version] '1.2.3'
+    # Major  Minor  Build  Revision
+    # -----  -----  -----  --------
+    # 1      2      3      -1
+
+    $isMinorRelease = (
+        $ENV:BHCommitMessage -match '!Release' -or
+        $ENV:BHCommitMessage -match '!Tag'
+    )
+
+    $isDeployment = (
+        $ENV:BHBuildSystem -ne 'Unknown' -and
+        $ENV:BHBranchName -eq 'Master' -and
+        ( 
+            $isMinorRelease -or
+            $ENV:BHCommitMessage -match '!Deploy'
+        )
+    )
 }
 
 
@@ -74,11 +94,9 @@ Task Test -Depends UnitTests {
     Remove-Item -Path ${ProjectRoot}/${TestFile} -Force -ErrorAction SilentlyContinue
 
 
-
-    # Failed tests?
-    # Need to tell psake or it will proceed to the deployment. Danger!
+    # Failed tests? Need to tell psake or it will proceed to the deployment. Danger!
     if ($TestResults.FailedCount -gt 0) {
-        Write-Error "Failed '$($TestResults.FailedCount)' tests, build failed"
+        Write-Error -Message "Failed '$($TestResults.FailedCount)' tests, build failed"
     }
     "`n"
 }
@@ -112,7 +130,12 @@ Task Build -Depends Test {
         # This is executed only in `master` branch
 
         #region Bump the module version
-            [Version] $version = Step-Version -Version (Get-Metadata -Path ${ENV:BHPSModuleManifest})
+            $step = 'Patch'
+            if ($isMinorRelease) {
+                $step = 'Minor'
+            }
+            [Version] $version = Step-Version -Version (Get-Metadata -Path ${ENV:BHPSModuleManifest}) -By $step
+
             Write-Host "Version based on module manifest: $version" -ForegroundColor Cyan
             $galleryVersion = Get-NextPSGalleryVersion -Name ${ENV:BHProjectName} 
             Write-Host "Version based on Powershell gallery's latest published module: $galleryVersion" -ForegroundColor Cyan
@@ -147,11 +170,10 @@ Task Build -Depends Test {
         git commit --all --message="Update version to $version; skip ci" 2>&1
 
         # Add version tag to commit
-        if ($ENV:BHCommitMessage -match '!Release' -or
-            $ENV:BHCommitMessage -match '!Tag'
-        ) {
-            git tag "v${version}" 2>&1
-            Write-Host "Tag 'v${version}' added" -ForegroundColor Cyan
+        if ($isMinorRelease) {
+            $GithubReleaseTag = 'v{0}.{1}.{2}' -f $version.Major, $version.Minor, $version.Build
+            git tag $GithubReleaseTag 2>&1
+            Write-Host "Tag '$GithubReleaseTag' added" -ForegroundColor Cyan
         }
 
         # Publish the new version back to Master on GitHub, together with tags, if any
@@ -180,14 +202,7 @@ Task Deploy -Depends Build {
     $lines
 
     # Gate deployment
-    if (
-        $ENV:BHBuildSystem -ne 'Unknown' -and
-        $ENV:BHBranchName -eq 'Master' -and
-        ( 
-            $ENV:BHCommitMessage -match '!Deploy' -or
-            $ENV:BHCommitMessage -match '!Tag'
-        )
-    )
+    if ($isDeployment)
     {
         $Params = @{
             Path  = $ProjectRoot
@@ -201,6 +216,6 @@ Task Deploy -Depends Build {
         "Skipping deployment: To deploy, ensure that...`n" +
         "`t* You are in a known build system (Current: ${ENV:BHBuildSystem})`n" +
         "`t* You are committing to the master branch (Current: ${ENV:BHBranchName}) `n" +
-        "`t* Your commit message includes !Deploy (Current: ${ENV:BHCommitMessage})"
+        "`t* Your commit message includes !Deploy or !Tag or !Release (Current: ${ENV:BHCommitMessage})"
     }
 }
